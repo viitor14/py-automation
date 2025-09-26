@@ -24,6 +24,7 @@ class MacroRecorder:
         action = {'action': action_type, 'delay': delay}
         action.update(kwargs)
         self.recorded_actions.append(action)
+        # print(f"Gravado: {action}") # Descomente para debug
 
     # --- Funções de callback para os listeners ---
     def on_move(self, x, y):
@@ -83,57 +84,43 @@ class MacroRecorder:
             return self.recorded_actions
         return []
 
-    def play_recording(self, actions, stop_event):
-        """
-        Reproduz uma lista de ações gravadas.
-        Verifica o 'stop_event' a cada passo para permitir o cancelamento.
-        Retorna um status: 'OK', 'Cancelado' ou 'Erro'.
-        """
+    def play_recording(self, actions):
+        """Reproduz uma lista de ações gravadas."""
         if not actions:
             print("Nenhuma ação para reproduzir.")
-            return 'OK'
-
+            return
+            
         print("Iniciando reprodução...")
-        try:
-            for action in actions:
-                # Verifica se o evento de parada foi acionado pela thread principal
-                if stop_event.is_set():
-                    print("Reprodução cancelada pelo usuário.")
-                    return 'Cancelado'
+        for action in actions:
+            time.sleep(action['delay'])
 
-                time.sleep(action['delay'])
+            action_type = action['action']
 
-                action_type = action['action']
+            if action_type == 'move':
+                self.mouse_controller.position = (action['x'], action['y'])
+            elif action_type == 'click_press':
+                self.mouse_controller.position = (action['x'], action['y'])
+                btn = mouse.Button.left if 'left' in action['button'] else mouse.Button.right
+                self.mouse_controller.press(btn)
+            elif action_type == 'click_release':
+                self.mouse_controller.position = (action['x'], action['y'])
+                btn = mouse.Button.left if 'left' in action['button'] else mouse.Button.right
+                self.mouse_controller.release(btn)
+            elif action_type == 'scroll':
+                self.mouse_controller.position = (action['x'], action['y'])
+                self.mouse_controller.scroll(action['dx'], action['dy'])
+            elif action_type in ['key_press', 'key_release']:
+                key_str = action['key']
+                key = None
+                # Converte string de volta para objeto Key se necessário
+                if key_str.startswith('Key.'):
+                    key = getattr(keyboard.Key, key_str.split('.')[-1])
+                else:
+                    key = key_str
 
-                if action_type == 'move':
-                    self.mouse_controller.position = (action['x'], action['y'])
-                elif action_type in ['click_press', 'click_release']:
-                    self.mouse_controller.position = (action['x'], action['y'])
-                    btn = mouse.Button.left if 'left' in action['button'] else mouse.Button.right
-                    if action_type == 'click_press':
-                        self.mouse_controller.press(btn)
-                    else:
-                        self.mouse_controller.release(btn)
-                elif action_type == 'scroll':
-                    self.mouse_controller.position = (action['x'], action['y'])
-                    self.mouse_controller.scroll(action['dx'], action['dy'])
-                elif action_type in ['key_press', 'key_release']:
-                    key_str = action['key']
-                    key = None
-                    # Converte string de volta para objeto Key se necessário
-                    if key_str.startswith('Key.'):
-                        key = getattr(keyboard.Key, key_str.split('.')[-1])
-                    else:
-                        key = key_str
+                if action_type == 'key_press':
+                    self.keyboard_controller.press(key)
+                else:
+                    self.keyboard_controller.release(key)
 
-                    if action_type == 'key_press':
-                        self.keyboard_controller.press(key)
-                    else:
-                        self.keyboard_controller.release(key)
-
-        except Exception as e:
-            print(f"Erro durante a reprodução: {e}")
-            return 'Erro'
-
-        print("Reprodução finalizada com sucesso.")
-        return 'OK'
+        print("Reprodução finalizada.")

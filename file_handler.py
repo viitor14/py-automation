@@ -39,8 +39,8 @@ def save_actions(actions):
 
 def load_actions():
     """
-    Abre uma janela para o usuário escolher um arquivo JSON.
-    Retorna uma tupla (lista_de_acoes, caminho_do_arquivo) ou None.
+    Abre uma janela para o usuário escolher um arquivo JSON para carregar.
+    Retorna a lista de ações ou None se a operação for cancelada ou falhar.
     """
     # Esconde a janela raiz do Tkinter
     root = tk.Tk()
@@ -57,7 +57,7 @@ def load_actions():
             with open(file_path, 'r') as f:
                 actions = json.load(f)
             print(f"Gravação carregada de: {file_path}")
-            return actions, file_path  # Retorna as ações E o caminho do arquivo
+            return actions
         except Exception as e:
             print(f"Erro ao carregar o arquivo: {e}")
             return None
