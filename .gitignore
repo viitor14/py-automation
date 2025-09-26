@@ -1,0 +1,31 @@
+# Diretórios e arquivos do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambiente virtual
+env/
+venv/
+.venv/
+
+# Configurações do VSCode
+.vscode/
+
+# Arquivos de log
+*.log
+
+# Dados temporários
+*.tmp
+*.temp
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de credenciais
+*.env
+.env.*
+
+# Pasta de testes (opcional)
+tests/__pycache__/
