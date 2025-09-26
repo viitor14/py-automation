@@ -2,8 +2,10 @@
 import customtkinter as ctk
 import threading
 import time
+# A importação do filedialog não é mais necessária aqui
 from recorder import MacroRecorder
-from file_handler import save_actions, load_actions
+# Importa as novas funções automáticas
+from file_handler import save_actions_automatically, load_actions_automatically
 from logger_setup import app_logger
 from network_checker import check_internet
 
@@ -38,11 +40,33 @@ class MacroApp(ctk.CTk):
         self.play_button = ctk.CTkButton(self.main_frame, text="Reproduzir Gravação", command=self.play_macro)
         self.play_button.pack(pady=10, fill="x", padx=30)
 
+    def handle_recording_stop(self):
+        """Chamado quando a gravação é interrompida (via ESC)."""
+        if self.is_recording_state:
+            self.is_recording_state = False
+            recorded_actions = self.recorder.recorded_actions
+            self.record_button.configure(text="Iniciar Gravação")
+            self.play_button.configure(state="normal")
+            
+            if recorded_actions:
+                self.status_label.configure(text=f"{len(recorded_actions)} ações gravadas. Salvando...")
+                # Chama a nova função de salvamento automático
+                if save_actions_automatically(recorded_actions):
+                    self.status_label.configure(text="Gravação salva automaticamente!")
+                else:
+                    self.status_label.configure(text="Erro ao salvar a gravação.")
+            else:
+                self.status_label.configure(text="Gravação finalizada sem ações.")
+
     def play_macro(self):
-        actions_to_play = load_actions()
+        """Carrega a macro automaticamente e a reproduz."""
+        # Chama a nova função de carregamento automático
+        actions_to_play = load_actions_automatically()
         if not actions_to_play:
+            self.status_label.configure(text="Nenhuma macro encontrada para reproduzir.")
             return
 
+        # O restante da lógica de verificação de internet e reprodução permanece igual
         self.record_button.configure(state="disabled")
         self.play_button.configure(state="disabled")
         
@@ -56,25 +80,21 @@ class MacroApp(ctk.CTk):
             wait_thread = threading.Thread(target=self._internet_waiter_thread, args=(actions_to_play,), daemon=True)
             wait_thread.start()
 
+    # --- O restante do arquivo (funções de toggle, threads, etc.) permanece o mesmo ---
     def _internet_waiter_thread(self, actions):
         while not self.cancel_wait_event.is_set():
             if check_internet():
                 app_logger.info("Internet detectada — Macro iniciada")
                 self.after(0, self._start_playback_logic, actions)
                 return
-            # Comente ou altere o valor abaixo para mudar o intervalo de verificação
             time.sleep(5)
 
     def _start_playback_logic(self, actions):
-        if self.playback_window:
-            self.playback_window.destroy()
-            self.playback_window = None
+        if self.playback_window: self.playback_window.destroy(); self.playback_window = None
         self.status_label.configure(text="Reproduzindo...")
-        
         def playback_thread_worker():
             self.recorder.play_recording(actions)
             self.after(0, self.on_playback_finished)
-        
         threading.Thread(target=playback_thread_worker, daemon=True).start()
 
     def show_wait_for_internet_window(self):
@@ -84,19 +104,15 @@ class MacroApp(ctk.CTk):
         self.playback_window.transient(self); self.playback_window.grab_set()
         self.playback_window.protocol("WM_DELETE_WINDOW", self.cancel_wait_and_play)
         self.playback_window.resizable(False, False)
-        progress_label = ctk.CTkLabel(self.playback_window, text="Aguardando conexão com a internet\npara iniciar a automação...", 
-                                      font=ctk.CTkFont(size=14), justify="center")
+        progress_label = ctk.CTkLabel(self.playback_window, text="Aguardando conexão com a internet\npara iniciar a automação...", font=ctk.CTkFont(size=14), justify="center")
         progress_label.pack(pady=20, padx=20, expand=True)
-        cancel_button = ctk.CTkButton(self.playback_window, text="Cancelar", command=self.cancel_wait_and_play, 
-                                      fg_color="red", hover_color="#C00000")
+        cancel_button = ctk.CTkButton(self.playback_window, text="Cancelar", command=self.cancel_wait_and_play, fg_color="red", hover_color="#C00000")
         cancel_button.pack(pady=10)
 
     def cancel_wait_and_play(self):
         app_logger.info("Reprodução cancelada pelo usuário antes da conexão")
         self.cancel_wait_event.set()
-        if self.playback_window:
-            self.playback_window.destroy()
-            self.playback_window = None
+        if self.playback_window: self.playback_window.destroy(); self.playback_window = None
         self.on_playback_finished(was_cancelled=True)
 
     def on_playback_finished(self, was_cancelled=False):
@@ -118,23 +134,12 @@ class MacroApp(ctk.CTk):
             threading.Thread(target=self.recorder.start_recording, daemon=True).start()
         else:
             self.handle_recording_stop()
-
-    def handle_recording_stop(self):
-        if self.is_recording_state:
-            self.is_recording_state = False
-            recorded_actions = self.recorder.recorded_actions
-            self.record_button.configure(text="Iniciar Gravação")
-            self.play_button.configure(state="normal")
-            if recorded_actions:
-                self.status_label.configure(text=f"{len(recorded_actions)} ações gravadas. Salvando...")
-                if save_actions(recorded_actions): self.status_label.configure(text="Gravação salva com sucesso!")
-                else: self.status_label.configure(text="Salvamento cancelado.")
-            else: self.status_label.configure(text="Gravação finalizada sem ações.")
     
     def check_recorder_status(self):
         if self.is_recording_state and not self.recorder.is_recording:
             self.handle_recording_stop()
         self.after(100, self.check_recorder_status)
+
 
 if __name__ == "__main__":
     app = MacroApp()

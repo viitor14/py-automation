@@ -1,66 +1,51 @@
 # file_handler.py
 import json
-import tkinter as tk
-from tkinter import filedialog
+import os
 
-def save_actions(actions):
+# Define o caminho padrão para salvar os dados do aplicativo
+# os.getenv('APPDATA') é a forma correta de obter a pasta %APPDATA% no Windows
+APP_DATA_FOLDER = os.path.join(os.getenv('APPDATA'), 'PyAutomacaoMacro')
+MACRO_FILE_PATH = os.path.join(APP_DATA_FOLDER, 'macro.json')
+
+def save_actions_automatically(actions):
     """
-    Abre uma janela para o usuário escolher onde salvar o arquivo JSON
-    e salva as ações gravadas.
-    Retorna True se salvou com sucesso, False caso contrário.
+    Salva as ações automaticamente em um local e nome de arquivo fixos.
+    Substitui qualquer arquivo existente.
     """
     if not actions:
         print("Nenhuma ação para salvar.")
         return False
+    
+    try:
+        # Garante que a pasta de destino exista. Se não, cria.
+        os.makedirs(APP_DATA_FOLDER, exist_ok=True)
 
-    # Esconde a janela raiz do Tkinter
-    root = tk.Tk()
-    root.withdraw()
-
-    # Pede ao usuário para escolher o local e o nome do arquivo
-    file_path = filedialog.asksaveasfilename(
-        defaultextension=".json",
-        filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-        title="Salvar gravação como..."
-    )
-
-    if file_path:
-        try:
-            with open(file_path, 'w') as f:
-                json.dump(actions, f, indent=4)
-            print(f"Gravação salva com sucesso em: {file_path}")
-            return True
-        except Exception as e:
-            print(f"Erro ao salvar o arquivo: {e}")
-            return False
-    else:
-        print("Operação de salvar cancelada.")
+        # Salva o arquivo, sobrescrevendo se já existir (modo 'w')
+        with open(MACRO_FILE_PATH, 'w') as f:
+            json.dump(actions, f, indent=4)
+        
+        print(f"Gravação salva com sucesso em: {MACRO_FILE_PATH}")
+        return True
+    except Exception as e:
+        print(f"Erro ao salvar o arquivo automaticamente: {e}")
         return False
 
-def load_actions():
+def load_actions_automatically():
     """
-    Abre uma janela para o usuário escolher um arquivo JSON para carregar.
-    Retorna a lista de ações ou None se a operação for cancelada ou falhar.
+    Carrega as ações do local e nome de arquivo fixos.
     """
-    # Esconde a janela raiz do Tkinter
-    root = tk.Tk()
-    root.withdraw()
-
-    # Pede ao usuário para escolher um arquivo
-    file_path = filedialog.askopenfilename(
-        filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-        title="Abrir gravação..."
-    )
-
-    if file_path:
-        try:
-            with open(file_path, 'r') as f:
-                actions = json.load(f)
-            print(f"Gravação carregada de: {file_path}")
-            return actions
-        except Exception as e:
-            print(f"Erro ao carregar o arquivo: {e}")
+    try:
+        # Verifica se o arquivo de macro existe no local esperado
+        if not os.path.exists(MACRO_FILE_PATH):
+            print(f"Arquivo de macro não encontrado em {MACRO_FILE_PATH}. Grave uma macro primeiro.")
             return None
-    else:
-        print("Operação de carregar cancelada.")
+
+        # Carrega as ações do arquivo
+        with open(MACRO_FILE_PATH, 'r') as f:
+            actions = json.load(f)
+        
+        print(f"Gravação carregada de: {MACRO_FILE_PATH}")
+        return actions
+    except Exception as e:
+        print(f"Erro ao carregar o arquivo automaticamente: {e}")
         return None
